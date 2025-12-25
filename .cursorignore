@@ -1,0 +1,41 @@
+# Cursor Ignore - Files to exclude from AI context
+
+# Dependencies
+.venv/
+node_modules/
+__pycache__/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+coverage/
+
+# IDE
+.idea/
+
+# Git
+.git/
+
+# Large/Binary files
+*.pyc
+*.pyo
+*.so
+*.whl
+
+# Logs
+*.log
+
+# Lock files (too large)
+uv.lock
+pnpm-lock.yaml
+
+# Documentation builds
+site/
+docs/api/

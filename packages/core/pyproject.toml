@@ -1,0 +1,34 @@
+[project]
+name = "monorepo-core"
+version = "0.1.0"
+description = "Core framework utilities for the monorepo"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "BEMIND TECHNOLOGY CO., LTD.", email = "info@bemind.tech" }
+]
+keywords = ["core", "framework", "utilities"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "monorepo-shared",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/monorepo_core"]

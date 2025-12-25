@@ -1,0 +1,163 @@
+# ==============================================================================
+# BMT Monorepo Workspace Configuration
+# ==============================================================================
+# This file defines the multi-language monorepo workspace structure.
+# Supports Python as primary language with extensibility for other languages.
+# ==============================================================================
+
+workspace:
+  name: "bmt-monorepo"
+  version: "0.1.0"
+  description: "Python Monorepo Template with Multi-Language Support"
+
+# ------------------------------------------------------------------------------
+# Primary Language Configuration
+# ------------------------------------------------------------------------------
+primary_language: python
+
+python:
+  version: ">=3.12"
+  package_manager: "uv"
+  tooling:
+    linter: "ruff"
+    formatter: "ruff"
+    type_checker: "mypy"
+    test_runner: "pytest"
+  paths:
+    apps: "apps/*"
+    packages: "packages/*"
+    tools: "tools/*"
+    tests: "tests"
+
+# ------------------------------------------------------------------------------
+# Additional Language Support
+# ------------------------------------------------------------------------------
+# Uncomment and configure as needed
+
+# javascript:
+#   version: ">=22.0.0"
+#   package_manager: "pnpm"
+#   tooling:
+#     linter: "eslint"
+#     formatter: "prettier"
+#     type_checker: "typescript"
+#     test_runner: "vitest"
+#   paths:
+#     apps: "apps/web/*"
+#     packages: "packages/js/*"
+
+# go:
+#   version: ">=1.22"
+#   tooling:
+#     linter: "golangci-lint"
+#     formatter: "gofmt"
+#     test_runner: "go test"
+#   paths:
+#     apps: "apps/go/*"
+#     packages: "packages/go/*"
+
+# rust:
+#   version: ">=1.75"
+#   package_manager: "cargo"
+#   tooling:
+#     linter: "clippy"
+#     formatter: "rustfmt"
+#     test_runner: "cargo test"
+#   paths:
+#     apps: "apps/rust/*"
+#     packages: "packages/rust/*"
+
+# ------------------------------------------------------------------------------
+# Workspace Members
+# ------------------------------------------------------------------------------
+members:
+  packages:
+    - name: "monorepo-core"
+      path: "packages/core"
+      language: "python"
+      description: "Core framework utilities"
+
+    - name: "monorepo-shared"
+      path: "packages/shared"
+      language: "python"
+      description: "Shared types and utilities"
+
+    - name: "monorepo-config"
+      path: "packages/config"
+      language: "python"
+      description: "Configuration management"
+
+  apps: []
+    # Add your apps here
+    # - name: "api"
+    #   path: "apps/api"
+    #   language: "python"
+    #   description: "REST API service"
+
+  tools: []
+    # Add your CLI tools here
+    # - name: "cli"
+    #   path: "tools/cli"
+    #   language: "python"
+    #   description: "CLI tools"
+
+# ------------------------------------------------------------------------------
+# Quality Gates
+# ------------------------------------------------------------------------------
+quality:
+  coverage_threshold: 80
+  lint_errors_allowed: 0
+  type_errors_allowed: 0
+  security_vulnerabilities_allowed: 0
+
+# ------------------------------------------------------------------------------
+# CI/CD Pipeline Stages
+# ------------------------------------------------------------------------------
+pipeline:
+  stages:
+    - name: "lint"
+      commands:
+        python: "uv run ruff check ."
+        # javascript: "pnpm lint"
+        # go: "golangci-lint run"
+
+    - name: "format"
+      commands:
+        python: "uv run ruff format . --check"
+        # javascript: "pnpm format:check"
+        # go: "gofmt -l ."
+
+    - name: "type-check"
+      commands:
+        python: "uv run mypy packages apps"
+        # javascript: "pnpm type-check"
+
+    - name: "test"
+      commands:
+        python: "uv run pytest --cov"
+        # javascript: "pnpm test"
+        # go: "go test ./..."
+
+    - name: "security"
+      commands:
+        python: "uv run bandit -r packages apps -ll"
+        # javascript: "pnpm audit"
+
+# ------------------------------------------------------------------------------
+# Docker Configuration
+# ------------------------------------------------------------------------------
+docker:
+  compose_file: "infra/docker/docker-compose.yml"
+  registries:
+    - name: "ghcr.io"
+      prefix: "ghcr.io/bemindlabs"
+
+# ------------------------------------------------------------------------------
+# Kubernetes Configuration
+# ------------------------------------------------------------------------------
+kubernetes:
+  base_path: "infra/k8s/base"
+  overlays:
+    - development
+    - staging
+    - production

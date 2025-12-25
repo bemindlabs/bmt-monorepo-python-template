@@ -1,0 +1,39 @@
+{
+  "recommendations": [
+    // Python
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+
+    // Formatting
+    "esbenp.prettier-vscode",
+
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // Docker & Kubernetes
+    "ms-azuretools.vscode-docker",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+
+    // YAML/TOML
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+
+    // Testing
+    "littlefoxteam.vscode-python-test-adapter",
+
+    // AI Assistants
+    "continue.continue",
+    "github.copilot",
+
+    // Utilities
+    "streetsidesoftware.code-spell-checker",
+    "editorconfig.editorconfig",
+    "gruntfuggly.todo-tree"
+  ]
+}

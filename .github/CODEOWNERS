@@ -1,0 +1,23 @@
+# ==============================================================================
+# CODEOWNERS - Define code ownership for automatic review requests
+# ==============================================================================
+
+# Default owners for everything
+* @bemindlabs/core-team
+
+# Package ownership
+packages/core/ @bemindlabs/core-team
+packages/shared/ @bemindlabs/core-team
+packages/config/ @bemindlabs/core-team
+
+# Infrastructure
+infra/ @bemindlabs/devops-team
+.github/ @bemindlabs/devops-team
+
+# Documentation
+docs/ @bemindlabs/core-team
+*.md @bemindlabs/core-team
+
+# Security-sensitive files
+.env.example @bemindlabs/security-team
+pyproject.toml @bemindlabs/core-team

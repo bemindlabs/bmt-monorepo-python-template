@@ -1,0 +1,206 @@
+# Cursor Rules for Python Monorepo Template
+
+## Project Overview
+This is a Python monorepo using UV for package management and modern tooling (Ruff, MyPy, Pytest). The project follows strict typing conventions, uses conventional commits, and maintains high code quality standards. This repository supports agentic workflows and multi-language extensions.
+
+## Important References
+- See `CLAUDE.md` for repository guidelines and coding standards
+- See `README.md` for project overview and quick start
+- See `docs/` for detailed documentation
+
+## Project Structure
+
+### Monorepo Architecture
+- **Root**: Contains shared configuration (pyproject.toml, Makefile)
+- **apps/**: Applications (APIs, CLIs, etc.)
+- **packages/**: Shared packages with workspace dependencies
+  - `packages/core/`: Core framework utilities
+  - `packages/shared/`: Common types, utilities, errors
+  - `packages/config/`: Configuration utilities
+- **infra/**: Infrastructure configurations (Docker, Kubernetes)
+- **tests/**: Test suites (unit, integration, e2e)
+- **docs/**: Documentation
+
+### Package Naming Convention
+- All packages use the `monorepo-*` namespace for pip
+- Python modules use `monorepo_*` namespace
+- Package names: `monorepo-core`, `monorepo-shared`, `monorepo-config`
+
+## Python Guidelines
+
+### Strict Typing
+- Always use Python strict mode (configured in pyproject.toml)
+- No `Any` types - use proper types or `object` with type guards
+- Use explicit type hints for all function parameters and returns
+- Use `|` for union types: `str | None` not `Optional[str]`
+
+### Type Safety
+```python
+# Good
+def process_data(input: str) -> Result[Data, ValidationError]:
+    """Process input data."""
+    return Success(Data(input))
+
+# Bad
+def process_data(input):  # No type hints
+    return Data(input)
+
+def process(data: Any):  # Avoid Any
+    pass
+```
+
+### Modern Python
+- Use Python 3.12+ features
+- Use `list[T]` not `List[T]`
+- Use `dict[K, V]` not `Dict[K, V]`
+- Use dataclasses or Pydantic for data structures
+- Use `pathlib.Path` for file paths
+
+## Code Style
+
+### Formatting Rules
+- **Indentation**: 4 spaces (Python standard)
+- **Quotes**: Double quotes for strings
+- **Line length**: 100 characters max
+- **Trailing commas**: Always use in multi-line structures
+
+### Ruff Configuration
+- Follows project configuration in `pyproject.toml`
+- Auto-format on save
+- Import sorting handled automatically
+
+### Import Organization
+- Group imports: stdlib → external → internal packages → relative
+- Use absolute imports for packages
+- Let Ruff organize imports automatically
+
+## Build System
+
+### UV Package Manager
+- Use `uv` for all package operations
+- Tasks are defined in `Makefile`
+- Build dependencies are managed automatically
+
+### Build Commands
+```bash
+# Install all packages
+make install
+
+# Build specific package
+make build-package PKG=core
+
+# Development mode
+make dev
+```
+
+## Testing
+
+### Pytest
+- Use Pytest for all testing
+- Test files: `test_*.py` or `*_test.py`
+- Use `describe`-style tests or simple `test_` functions
+- Use fixtures in `tests/fixtures/`
+
+### Test Structure
+```python
+import pytest
+
+class TestFeatureName:
+    def test_should_do_something(self):
+        assert actual == expected
+
+    def test_should_handle_edge_case(self):
+        with pytest.raises(ValidationError):
+            function_under_test(invalid_input)
+```
+
+## Package Development
+
+### Creating New Packages
+1. Create directory: `packages/my-package/`
+2. Add `pyproject.toml` with `monorepo-my-package` name
+3. Create `src/monorepo_my_package/__init__.py`
+4. Add workspace dependencies: `"monorepo-shared"`
+5. Register in root `pyproject.toml`
+
+### Creating New Apps
+1. Create directory: `apps/my-app/`
+2. Add `pyproject.toml` with app configuration
+3. Create entry point (`main.py` or `__main__.py`)
+4. Add workspace dependencies as needed
+
+## Git Workflow
+
+### Commit Convention
+Follow Conventional Commits (enforced by Commitizen):
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation changes
+- `style:` - Code style changes
+- `refactor:` - Code refactoring
+- `perf:` - Performance improvements
+- `test:` - Test additions/changes
+- `build:` - Build system changes
+- `ci:` - CI/CD changes
+- `chore:` - Maintenance tasks
+
+### Commit Scopes
+- Packages: `core`, `shared`, `config`
+- Apps: `app`, `api`
+- Other: `deps`, `infra`, `docs`, `ci`
+
+**Format**: `type(scope): subject` (lower-case, max 100 chars)
+**Example**: `feat(core): add retry decorator`
+
+## Environment Variables
+
+### Configuration
+- Use `monorepo-config` package for environment management
+- Validate with Pydantic settings
+- Use `.env.example` for documentation
+- Never commit `.env` or `.env.local` files
+
+## AI Assistant Guidelines
+
+### When Making Changes
+1. **Understand the monorepo structure** - Know which package/app you're working in
+2. **Maintain type safety** - Never use `Any`, always provide proper types
+3. **Follow existing patterns** - Match the code style and structure
+4. **Update tests** - Add or update tests for new features
+5. **Check workspace dependencies** - Ensure proper references
+6. **Run type checks** - Verify MyPy compiles before suggesting changes
+
+### Best Practices
+1. **Always use type hints** - Every function, every parameter
+2. **Build packages after changes** - Ensure they compile
+3. **Keep packages focused** - Single responsibility principle
+4. **Export types** - Make types available to consumers
+5. **Write tests** - Maintain high test coverage
+6. **Document public APIs** - Add docstrings for exported functions
+7. **Keep dependencies minimal** - Only add what's needed
+
+## Error Handling
+
+### Error Classes
+- Use error classes from `monorepo-shared`
+- Create specific error types for different scenarios
+- Include context in error messages
+
+```python
+from monorepo_shared import NotFoundError, ValidationError
+
+raise NotFoundError("User", identifier=user_id)
+raise ValidationError("Email format is invalid", field="email")
+```
+
+## Performance
+
+### Build Performance
+- UV provides fast dependency resolution
+- Use workspace dependencies to avoid reinstalls
+- Cache frequently used dependencies
+
+### Runtime Performance
+- Use async where appropriate
+- Profile before optimizing
+- Use appropriate data structures

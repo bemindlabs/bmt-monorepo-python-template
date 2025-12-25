@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monorepo-api
+  namespace: monorepo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: monorepo-api
+  template:
+    metadata:
+      labels:
+        app: monorepo-api
+    spec:
+      containers:
+        - name: api
+          image: monorepo-api:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: monorepo-config
+                  key: ENVIRONMENT
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: monorepo-config
+                  key: LOG_LEVEL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
