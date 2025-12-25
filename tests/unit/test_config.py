@@ -6,15 +6,15 @@ from unittest.mock import patch
 import pytest
 
 from monorepo_config.env import (
+    get_bool_env,
     get_env,
+    get_int_env,
+    get_list_env,
     is_dev,
     is_prod,
     is_staging,
     is_test,
     require_env,
-    get_bool_env,
-    get_int_env,
-    get_list_env,
 )
 
 
@@ -78,9 +78,11 @@ class TestRequireEnv:
 
     def test_raises_when_required_and_not_set(self) -> None:
         """Should raise when required and not set."""
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(ValueError, match="Required environment variable"):
-                require_env("MISSING_VAR")
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(ValueError, match="Required environment variable"),
+        ):
+            require_env("MISSING_VAR")
 
 
 class TestGetBoolEnv:

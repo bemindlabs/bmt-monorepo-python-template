@@ -1,8 +1,6 @@
 """Unit tests for monorepo-core package."""
 
-import pytest
-
-from monorepo_core.utils import generate_id, slugify, deep_merge, chunk_list, flatten_dict
+from monorepo_core.utils import chunk_list, deep_merge, flatten_dict, generate_id, slugify
 
 
 class TestGenerateId:

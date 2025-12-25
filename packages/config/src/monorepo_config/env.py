@@ -27,7 +27,7 @@ def load_env(
         return load_dotenv(env_file, override=override)
 
     # Try loading from common locations
-    env_files = [
+    env_files: list[str | Path] = [
         ".env.local",
         ".env",
         Path.cwd() / ".env.local",
@@ -35,8 +35,9 @@ def load_env(
     ]
 
     for file in env_files:
-        if Path(file).exists():
-            return load_dotenv(file, override=override)
+        file_path = Path(file) if isinstance(file, str) else file
+        if file_path.exists():
+            return load_dotenv(file_path, override=override)
 
     return False
 

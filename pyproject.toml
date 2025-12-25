@@ -27,6 +27,9 @@ Issues = "https://github.com/bemindlabs/bmt-monorepo-python-template/issues"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["packages", "apps"]
+
 # ==============================================================================
 # UV Workspace Configuration
 # ==============================================================================
@@ -84,6 +87,8 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "PLR0913", # too many arguments
     "PLR2004", # magic value comparison
+    "UP046",  # Generic class uses Generic subclass (PEP 695 style not required)
+    "UP047",  # Generic function uses TypeVar (PEP 695 style not required)
 ]
 unfixable = ["F841"]  # unused variables
 
@@ -120,6 +125,11 @@ warn_unused_ignores = true
 show_error_codes = true
 namespace_packages = true
 explicit_package_bases = true
+mypy_path = [
+    "packages/core/src",
+    "packages/shared/src",
+    "packages/config/src",
+]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

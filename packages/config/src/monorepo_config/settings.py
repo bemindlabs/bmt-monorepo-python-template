@@ -4,8 +4,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field
-from pydantic_settings import BaseSettings as PydanticBaseSettings
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import BaseSettings as PydanticBaseSettings, SettingsConfigDict
 
 
 class BaseSettings(PydanticBaseSettings):

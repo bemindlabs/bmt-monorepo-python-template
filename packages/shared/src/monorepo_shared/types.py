@@ -47,13 +47,9 @@ class PaginationParams(BaseModel):
     """Parameters for pagination."""
 
     page: int = Field(default=1, ge=1, description="Page number (1-indexed)")
-    page_size: int = Field(
-        default=20, ge=1, le=100, description="Number of items per page"
-    )
+    page_size: int = Field(default=20, ge=1, le=100, description="Number of items per page")
     sort_by: str | None = Field(default=None, description="Field to sort by")
-    sort_order: str = Field(
-        default="asc", pattern="^(asc|desc)$", description="Sort order"
-    )
+    sort_order: str = Field(default="asc", pattern="^(asc|desc)$", description="Sort order")
 
     @property
     def offset(self) -> int:

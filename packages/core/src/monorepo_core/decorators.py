@@ -36,7 +36,8 @@ def retry(
 
             for attempt in range(max_attempts):
                 try:
-                    return await func(*args, **kwargs)  # type: ignore[misc]
+                    result: R = await func(*args, **kwargs)  # type: ignore[misc]
+                    return result
                 except exceptions as e:
                     last_exception = e
                     if attempt < max_attempts - 1:
@@ -88,9 +89,10 @@ def cached(ttl_seconds: float = 300.0) -> Callable[[Callable[P, R]], Callable[P,
             if key in cache:
                 cached_time, cached_value = cache[key]
                 if now - cached_time < ttl_seconds:
-                    return cached_value  # type: ignore[return-value]
+                    cached_result: R = cached_value
+                    return cached_result
 
-            result = func(*args, **kwargs)
+            result: R = func(*args, **kwargs)
             cache[key] = (now, result)
             return result
 
@@ -113,7 +115,8 @@ def timed(func: Callable[P, R]) -> Callable[P, R]:
     async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         start = time.perf_counter()
         try:
-            return await func(*args, **kwargs)  # type: ignore[misc]
+            result: R = await func(*args, **kwargs)  # type: ignore[misc]
+            return result
         finally:
             elapsed = time.perf_counter() - start
             print(f"{func.__name__} executed in {elapsed:.4f}s")
@@ -122,7 +125,8 @@ def timed(func: Callable[P, R]) -> Callable[P, R]:
     def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         start = time.perf_counter()
         try:
-            return func(*args, **kwargs)
+            result: R = func(*args, **kwargs)
+            return result
         finally:
             elapsed = time.perf_counter() - start
             print(f"{func.__name__} executed in {elapsed:.4f}s")
