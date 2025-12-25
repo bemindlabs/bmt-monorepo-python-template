@@ -1,0 +1,54 @@
+{
+  "ai": {
+    "model": "claude-3-opus",
+    "context": {
+      "includeFiles": [
+        "pyproject.toml",
+        "CLAUDE.md",
+        ".cursorrules",
+        "workspace.yaml"
+      ],
+      "excludePatterns": [
+        "**/__pycache__/**",
+        "**/.venv/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/coverage/**",
+        "**/.pytest_cache/**",
+        "**/.mypy_cache/**",
+        "**/.ruff_cache/**",
+        "**/node_modules/**",
+        "**/*.pyc",
+        "**/uv.lock"
+      ]
+    }
+  },
+  "editor": {
+    "formatOnSave": true,
+    "tabSize": 4,
+    "insertSpaces": true
+  },
+  "python": {
+    "interpreter": ".venv/bin/python",
+    "linting": {
+      "enabled": true,
+      "tool": "ruff"
+    },
+    "formatting": {
+      "tool": "ruff"
+    },
+    "typeChecking": {
+      "enabled": true,
+      "tool": "mypy",
+      "mode": "strict"
+    }
+  },
+  "testing": {
+    "framework": "pytest",
+    "autoDiscovery": true,
+    "coverageEnabled": true
+  },
+  "terminal": {
+    "defaultProfile": "zsh"
+  }
+}

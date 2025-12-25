@@ -1,0 +1,57 @@
+{
+  "version": "1.0.0",
+  "quality_gates": {
+    "lint": {
+      "enabled": true,
+      "tool": "ruff",
+      "command": "uv run ruff check .",
+      "threshold": {
+        "errors": 0,
+        "warnings": 10
+      }
+    },
+    "format": {
+      "enabled": true,
+      "tool": "ruff",
+      "command": "uv run ruff format . --check"
+    },
+    "type_check": {
+      "enabled": true,
+      "tool": "mypy",
+      "command": "uv run mypy packages apps",
+      "threshold": {
+        "errors": 0
+      }
+    },
+    "test": {
+      "enabled": true,
+      "tool": "pytest",
+      "command": "uv run pytest --cov=packages --cov=apps",
+      "threshold": {
+        "coverage": 80,
+        "failures": 0
+      }
+    },
+    "security": {
+      "enabled": true,
+      "tool": "bandit",
+      "command": "uv run bandit -r packages apps -ll",
+      "threshold": {
+        "high": 0,
+        "medium": 0
+      }
+    }
+  },
+  "pre_commit": {
+    "enabled": true,
+    "gates": ["lint", "format"]
+  },
+  "pre_push": {
+    "enabled": true,
+    "gates": ["lint", "format", "type_check", "test"]
+  },
+  "ci": {
+    "enabled": true,
+    "gates": ["lint", "format", "type_check", "test", "security"]
+  }
+}

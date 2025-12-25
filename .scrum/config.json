@@ -1,0 +1,30 @@
+{
+  "project": {
+    "name": "BMT Python Monorepo",
+    "version": "0.1.0",
+    "description": "Python Monorepo Template with Multi-Language Support"
+  },
+  "sprint": {
+    "duration_days": 14,
+    "start_day": "monday"
+  },
+  "backlog": {
+    "file": "backlog.json",
+    "priority_levels": ["critical", "high", "medium", "low"]
+  },
+  "standup": {
+    "enabled": true,
+    "directory": "standups"
+  },
+  "retrospective": {
+    "enabled": true,
+    "directory": "retros"
+  },
+  "velocity": {
+    "track": true,
+    "file": "velocity.json"
+  },
+  "story_points": {
+    "scale": [1, 2, 3, 5, 8, 13, 21]
+  }
+}

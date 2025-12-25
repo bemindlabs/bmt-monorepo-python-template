@@ -1,0 +1,54 @@
+{
+  "backlog": [
+    {
+      "id": "MONO-001",
+      "title": "Add FastAPI example application",
+      "description": "Create a sample FastAPI application in apps/api with basic CRUD operations",
+      "priority": "high",
+      "story_points": 5,
+      "status": "backlog",
+      "labels": ["feature", "api"]
+    },
+    {
+      "id": "MONO-002",
+      "title": "Add CLI tool example",
+      "description": "Create a sample CLI tool in tools/cli using Click",
+      "priority": "medium",
+      "story_points": 3,
+      "status": "backlog",
+      "labels": ["feature", "cli"]
+    },
+    {
+      "id": "MONO-003",
+      "title": "Add database integration package",
+      "description": "Create packages/database with SQLAlchemy integration",
+      "priority": "high",
+      "story_points": 8,
+      "status": "backlog",
+      "labels": ["feature", "package"]
+    },
+    {
+      "id": "MONO-004",
+      "title": "Add authentication package",
+      "description": "Create packages/auth with JWT authentication utilities",
+      "priority": "medium",
+      "story_points": 8,
+      "status": "backlog",
+      "labels": ["feature", "security"]
+    },
+    {
+      "id": "MONO-005",
+      "title": "Add logging package",
+      "description": "Create packages/logging with structured logging support",
+      "priority": "medium",
+      "story_points": 3,
+      "status": "backlog",
+      "labels": ["feature", "observability"]
+    }
+  ],
+  "metadata": {
+    "total_items": 5,
+    "total_points": 27,
+    "last_updated": "2024-12-25"
+  }
+}

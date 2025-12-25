@@ -15,6 +15,18 @@ infra/
 │       ├── development/
 │       ├── staging/
 │       └── production/
+├── vercel/         # Vercel serverless deployment
+│   └── vercel.json
+├── aws/            # AWS configurations
+│   ├── cdk/        # AWS CDK stacks
+│   ├── cloudformation/
+│   ├── terraform/
+│   └── lambda/
+├── gcp/            # GCP configurations
+│   ├── cloud-run/
+│   ├── cloud-functions/
+│   ├── terraform/
+│   └── app-engine/
 └── firebase/       # Firebase configurations (if used)
 ```
 
@@ -78,3 +90,97 @@ Each environment overlay in `k8s/overlays/` can customize:
 | Development | 1 | 256Mi-512Mi | DEBUG |
 | Staging | 2 | 256Mi-512Mi | INFO |
 | Production | 3 | 512Mi-1Gi | WARNING |
+
+## Vercel
+
+Serverless deployment for Python applications.
+
+### Setup
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login and link
+vercel login
+vercel link
+```
+
+### Deployment
+
+```bash
+# Preview deployment
+make vercel-preview
+
+# Production deployment
+make vercel-prod
+
+# View logs
+make vercel-logs
+```
+
+See [vercel/README.md](vercel/README.md) for detailed configuration.
+
+## AWS
+
+AWS deployment options: CDK, CloudFormation, Terraform, and Lambda.
+
+### Prerequisites
+
+```bash
+# Install AWS CLI
+pip install awscli
+
+# Configure credentials
+aws configure
+```
+
+### Deployment
+
+```bash
+# CDK
+make aws-cdk-deploy
+
+# CloudFormation
+make aws-cfn-deploy ENV=production
+
+# Terraform
+make aws-tf-apply
+
+# Lambda
+make aws-lambda-deploy
+```
+
+See [aws/README.md](aws/README.md) for detailed configuration.
+
+## GCP
+
+GCP deployment options: Cloud Run, Cloud Functions, Terraform, and App Engine.
+
+### Prerequisites
+
+```bash
+# Install gcloud CLI
+brew install google-cloud-sdk
+
+# Initialize
+gcloud init
+```
+
+### Deployment
+
+```bash
+# Cloud Run
+make gcp-run-deploy
+
+# Cloud Functions
+make gcp-functions-deploy
+
+# Terraform
+make gcp-tf-apply
+
+# App Engine
+make gcp-appengine-deploy
+```
+
+See [gcp/README.md](gcp/README.md) for detailed configuration.

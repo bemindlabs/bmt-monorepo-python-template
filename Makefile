@@ -49,6 +49,9 @@ include make/clean.mk    # Cleanup
 include make/docs.mk     # Documentation
 include make/utils.mk    # Utilities
 include make/ci.mk       # CI/CD Helpers
+include make/vercel.mk   # Vercel Deployment
+include make/aws.mk      # AWS Deployment
+include make/gcp.mk      # GCP Deployment
 
 # ------------------------------------------------------------------------------
 # Help
@@ -98,6 +101,15 @@ help: ## Show this help message
 	@echo ""
 	@echo "$(CYAN)CI/CD$(RESET)"
 	@grep -E '^[a-zA-Z0-9_-]+:.*## .*$$' make/ci.mk | awk 'BEGIN {FS = ":.*## "}; {printf "  $(YELLOW)%-20s$(RESET) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(CYAN)Vercel$(RESET)"
+	@grep -E '^[a-zA-Z0-9_-]+:.*## .*$$' make/vercel.mk | awk 'BEGIN {FS = ":.*## "}; {printf "  $(YELLOW)%-20s$(RESET) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(CYAN)AWS$(RESET)"
+	@grep -E '^[a-zA-Z0-9_-]+:.*## .*$$' make/aws.mk | awk 'BEGIN {FS = ":.*## "}; {printf "  $(YELLOW)%-20s$(RESET) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(CYAN)GCP$(RESET)"
+	@grep -E '^[a-zA-Z0-9_-]+:.*## .*$$' make/gcp.mk | awk 'BEGIN {FS = ":.*## "}; {printf "  $(YELLOW)%-20s$(RESET) %s\n", $$1, $$2}'
 	@echo ""
 
 # ------------------------------------------------------------------------------

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "name": "monorepo-api",
+  "builds": [
+    {
+      "src": "apps/api/src/api/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/api/src/api/main.py"
+    }
+  ],
+  "env": {
+    "ENVIRONMENT": "production",
+    "LOG_LEVEL": "INFO"
+  },
+  "regions": ["sin1"],
+  "functions": {
+    "apps/api/src/api/main.py": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}
