@@ -67,6 +67,109 @@ hotfix/*  ──┘
 - Hotfixes: `hotfix/<ticket-id>-short-description`
 - Releases: `release/v<major>.<minor>.<patch>`
 
+## Backlog Management
+
+This repository supports dual backlog tracking—local files for offline/fast access and GitHub Issues for collaboration and visibility.
+
+### Local Backlog
+
+Local backlogs are stored in `.scrum/backlog/` as YAML files:
+
+```
+.scrum/
+├── backlog/
+│   ├── product-backlog.yaml    # Full product backlog
+│   ├── sprint-backlog.yaml     # Current sprint items
+│   └── archive/                # Completed sprints
+├── sprints/
+│   └── sprint-{n}.yaml         # Sprint definitions
+└── config.yaml                 # Scrum configuration
+```
+
+**Backlog Item Format:**
+```yaml
+items:
+  - id: "ITEM-001"
+    title: "Implement user authentication"
+    description: "Add OAuth2 authentication flow"
+    type: "feature"           # feature | bug | task | spike
+    priority: "high"          # critical | high | medium | low
+    status: "todo"            # todo | in-progress | review | done
+    story_points: 5
+    labels: ["auth", "security"]
+    assignee: null
+    github_issue: null        # Linked GitHub issue number
+    created_at: "2025-01-15"
+    updated_at: "2025-01-15"
+```
+
+### GitHub Issues Integration
+
+Use GitHub Issues for external visibility and collaboration. Issues should follow the same structure:
+
+**Labels:** Match local types and priorities:
+- Types: `type:feature`, `type:bug`, `type:task`, `type:spike`
+- Priority: `priority:critical`, `priority:high`, `priority:medium`, `priority:low`
+- Status: `status:todo`, `status:in-progress`, `status:review`
+
+**Issue Template Fields:**
+- Title matches backlog item title
+- Body contains description and acceptance criteria
+- Labels reflect type, priority, and component
+- Milestone links to sprint
+
+### Syncing Local Backlog to GitHub Issues
+
+The `/scrum-backlog` command manages synchronization between local and GitHub:
+
+**Sync Operations:**
+1. **Push to GitHub** (`/scrum-backlog sync --push`):
+   - Creates GitHub issues for new local items without `github_issue`
+   - Updates existing issues when local items change
+   - Adds `github_issue` reference back to local file
+
+2. **Pull from GitHub** (`/scrum-backlog sync --pull`):
+   - Imports new GitHub issues to local backlog
+   - Updates local items when GitHub issues change
+   - Syncs status, labels, and assignees
+
+3. **Two-way sync** (`/scrum-backlog sync`):
+   - Performs both push and pull
+   - Resolves conflicts using last-updated timestamp
+
+**Sync Rules:**
+- Local `id` maps to GitHub issue via `github_issue` field
+- Status changes sync bidirectionally
+- Labels are normalized between local types and GitHub labels
+- Closing a GitHub issue marks local item as `done`
+- Local items marked `done` close linked GitHub issues
+
+**Commands:**
+```bash
+# View backlog
+/scrum-backlog list
+/scrum-backlog list --status=todo --priority=high
+
+# Add items
+/scrum-backlog add --title="..." --type=feature --priority=high
+
+# Sync with GitHub
+/scrum-backlog sync              # Two-way sync
+/scrum-backlog sync --push       # Local → GitHub
+/scrum-backlog sync --pull       # GitHub → Local
+/scrum-backlog sync --dry-run    # Preview changes
+
+# Link existing issue
+/scrum-backlog link ITEM-001 --issue=42
+```
+
+### Best Practices
+
+1. **Single Source of Truth**: Use local backlog as primary, sync to GitHub for visibility
+2. **Regular Syncs**: Run sync before sprint planning and after daily standups
+3. **Conflict Resolution**: When in doubt, GitHub issue state wins for external items
+4. **Sprint Boundaries**: Archive completed sprint backlogs locally, close GitHub milestones
+
 ## Multi-Language Support
 
 This template is designed to support additional languages. Configuration lives in `workspace.yaml`. To add a new language:
