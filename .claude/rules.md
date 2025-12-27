@@ -1,6 +1,6 @@
 # Monorepo Template - Claude Rules
 
-> **Version**: 0.1.0
+> **Version**: 0.2.0
 > **Project**: Python Monorepo Template with Multi-Language Support
 
 ## Core Principles
@@ -9,6 +9,39 @@
 2. **Type Safety**: Use strict type hints, no `Any` types
 3. **Test Coverage**: Maintain 80%+ coverage on changed code
 4. **Clean Architecture**: Separate concerns between packages, apps, and tools
+5. **Branching Discipline**: Follow the defined branching workflow
+
+## Branching Workflow
+
+```
+feature/* ──┬──> dev ──> staging ──> production
+hotfix/*  ──┘
+```
+
+### Branch Hierarchy
+
+| Branch | Purpose | Protection |
+|--------|---------|------------|
+| `production` | Production-ready code | Highest - 2 approvals, all checks |
+| `staging` | Pre-production testing | High - 1 approval, CI pass |
+| `dev` | Integration branch | Medium - 1 approval, PR review |
+| `feature/*` | Feature development | None |
+| `hotfix/*` | Urgent fixes | None |
+
+### Workflow Rules
+
+1. **Features**: Create from `dev`, merge back via PR
+2. **Staging**: Merge from `dev` after integration testing
+3. **Production**: Merge from `staging` only when:
+   - All tests pass (`make zero-qa`)
+   - Coverage >= 80%
+   - Code review approved
+
+### Branch Naming
+
+- `feature/<ticket-id>-<description>`
+- `hotfix/<ticket-id>-<description>`
+- `release/v<major>.<minor>.<patch>`
 
 ## Pre-Development Checklist
 
@@ -16,15 +49,15 @@ Before making ANY code changes:
 
 ```bash
 # 1. Check current state
-git status
-git pull origin main
+git checkout dev
+git pull origin dev
 
 # 2. Validate environment
 uv sync                    # Sync dependencies
 uv run ruff check .        # Check code quality
 uv run mypy packages apps  # Check types
 
-# 3. Create feature branch
+# 3. Create feature branch from dev
 git checkout -b feature/<descriptive-name>
 ```
 
@@ -149,18 +182,21 @@ test(config): add validation tests
 ### Python
 
 ```python
-# Good
-from typing import Any
-
+# Good - explicit types
 def create_service(config: Config) -> Service:
     """Create a new service instance."""
     return Service(config)
 
-# Bad
-def create_service(config):  # No type hints
+def process(data: UserData) -> Result[ProcessedData]:
+    """Process user data with explicit types."""
+    return Result.ok(transform(data))
+
+# Bad - missing types or using Any
+def create_service(config):  # Missing type hints
     return Service(config)
 
-def process(data: Any):  # Avoid Any
+from typing import Any
+def process(data: Any):  # Avoid Any - use concrete types
     pass
 ```
 

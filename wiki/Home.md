@@ -10,6 +10,7 @@ A production-ready Python monorepo template with multi-language support, modern 
 
 - [Getting Started](Getting-Started.md)
 - [Architecture](Architecture.md)
+- [Branching Workflow](Branching-Workflow.md)
 - [Development Guide](Development/Setup.md)
 - [Package Documentation](Packages/README.md)
 - [Deployment Guide](Deployment/README.md)

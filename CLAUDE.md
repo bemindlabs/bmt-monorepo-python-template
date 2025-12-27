@@ -32,6 +32,41 @@ Pytest drives all suites; test folders mirror runtime modules (`tests/unit/core`
 
 Commitizen enforces Conventional Commits with types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. Scopes include: `core`, `shared`, `config`, `app`, `cli`, `infra`, `docs`. Subjects stay lower-case and ≤100 chars, e.g., `feat(core): add auth session guard`. Run lint, type-check, and tests before committing. PRs should summarize intent, link issues, and note commands executed.
 
+## Branching Workflow
+
+This repository uses a structured branching strategy with protected branches:
+
+```
+feature/* ──┬──> dev ──> staging ──> production
+hotfix/*  ──┘
+```
+
+### Branch Hierarchy
+
+| Branch | Purpose | Protection Level |
+|--------|---------|------------------|
+| `production` | Production-ready code | Highest - requires all checks |
+| `staging` | Pre-production testing | High - requires CI pass |
+| `dev` | Integration branch | Medium - requires PR review |
+| `feature/*` | Feature development | None |
+| `hotfix/*` | Urgent production fixes | None |
+
+### Workflow Rules
+
+1. **Feature Development**: Create `feature/<name>` from `dev`, merge back to `dev` via PR
+2. **Staging Promotion**: Merge `dev` to `staging` after integration testing
+3. **Production Release**: Merge `staging` to `production` only when:
+   - All tests pass (`make zero-qa`)
+   - Coverage ≥ 80%
+   - Code review approved
+   - No blocking issues
+
+### Branch Naming
+
+- Features: `feature/<ticket-id>-short-description`
+- Hotfixes: `hotfix/<ticket-id>-short-description`
+- Releases: `release/v<major>.<minor>.<patch>`
+
 ## Multi-Language Support
 
 This template is designed to support additional languages. Configuration lives in `workspace.yaml`. To add a new language:
