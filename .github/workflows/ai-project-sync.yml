@@ -1,0 +1,403 @@
+name: AI Project Sync
+
+on:
+  schedule:
+    - cron: '0 9 * * 1-5'  # Weekdays at 9 AM UTC
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Sync action to perform'
+        required: true
+        default: 'sync-all'
+        type: choice
+        options:
+          - sync-all
+          - sync-backlog
+          - sync-issues
+          - generate-report
+      dry_run:
+        description: 'Dry run (no changes)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.5.0"
+
+jobs:
+  sync-backlog:
+    name: Sync Local Backlog to GitHub Issues
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action != 'generate-report'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read local backlog
+        id: backlog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '.scrum/backlog.json';
+
+            if (!fs.existsSync(path)) {
+              console.log('No backlog file found');
+              return { items: [], metadata: {} };
+            }
+
+            const backlog = JSON.parse(fs.readFileSync(path, 'utf8'));
+            console.log(`Found ${backlog.backlog?.length || 0} backlog items`);
+            return backlog;
+
+      - name: Get existing issues
+        id: issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: 'backlog-item',
+              per_page: 100
+            });
+
+            const issueMap = {};
+            issues.forEach(issue => {
+              // Extract backlog ID from issue body
+              const match = issue.body?.match(/Backlog ID:\s*`?(\w+-\d+)`?/);
+              if (match) {
+                issueMap[match[1]] = issue;
+              }
+            });
+
+            console.log(`Found ${Object.keys(issueMap).length} synced issues`);
+            return issueMap;
+
+      - name: Sync backlog items
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const backlog = ${{ steps.backlog.outputs.result }};
+            const existingIssues = ${{ steps.issues.outputs.result }};
+            const dryRun = '${{ github.event.inputs.dry_run }}' === 'true';
+
+            const items = backlog.backlog || [];
+            const created = [];
+            const updated = [];
+
+            for (const item of items) {
+              const existingIssue = existingIssues[item.id];
+
+              const labels = [
+                'backlog-item',
+                `priority:${item.priority}`,
+                ...item.labels
+              ];
+
+              const body = `## ${item.title}
+
+            ${item.description}
+
+            ---
+
+            | Property | Value |
+            |----------|-------|
+            | Backlog ID | \`${item.id}\` |
+            | Priority | ${item.priority} |
+            | Story Points | ${item.story_points} |
+            | Status | ${item.status} |
+
+            ---
+            *Synced from local backlog*
+            `;
+
+              if (existingIssue) {
+                // Update existing issue
+                if (!dryRun) {
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: existingIssue.number,
+                    title: item.title,
+                    body: body,
+                    labels: labels,
+                    state: item.status === 'done' ? 'closed' : 'open'
+                  });
+                }
+                updated.push({ id: item.id, issue: existingIssue.number });
+              } else {
+                // Create new issue
+                if (!dryRun) {
+                  const { data: newIssue } = await github.rest.issues.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    title: item.title,
+                    body: body,
+                    labels: labels
+                  });
+                  created.push({ id: item.id, issue: newIssue.number });
+                } else {
+                  created.push({ id: item.id, issue: 'dry-run' });
+                }
+              }
+            }
+
+            console.log(`Created: ${created.length}, Updated: ${updated.length}`);
+            console.log('Created:', JSON.stringify(created));
+            console.log('Updated:', JSON.stringify(updated));
+
+            return { created, updated, dryRun };
+
+  sync-issues-to-backlog:
+    name: Sync GitHub Issues to Local Backlog
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'sync-issues' || github.event.inputs.action == 'sync-all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get issues with backlog labels
+        id: issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            // Filter issues that should be in backlog
+            const backlogIssues = issues.filter(issue => {
+              const labels = issue.labels.map(l => l.name);
+              return labels.includes('type:feature') ||
+                     labels.includes('type:bug') ||
+                     labels.includes('enhancement');
+            });
+
+            console.log(`Found ${backlogIssues.length} issues for backlog`);
+            return backlogIssues.map(i => ({
+              number: i.number,
+              title: i.title,
+              body: i.body,
+              labels: i.labels.map(l => l.name),
+              state: i.state,
+              created_at: i.created_at
+            }));
+
+      - name: Update local backlog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issues = ${{ steps.issues.outputs.result }};
+            const dryRun = '${{ github.event.inputs.dry_run }}' === 'true';
+            const backlogPath = '.scrum/backlog.json';
+
+            // Read existing backlog
+            let backlog = { backlog: [], metadata: {} };
+            if (fs.existsSync(backlogPath)) {
+              backlog = JSON.parse(fs.readFileSync(backlogPath, 'utf8'));
+            }
+
+            // Get existing IDs linked to issues
+            const existingByIssue = {};
+            backlog.backlog.forEach(item => {
+              if (item.github_issue) {
+                existingByIssue[item.github_issue] = item;
+              }
+            });
+
+            // Add new items from issues
+            let newItems = 0;
+            for (const issue of issues) {
+              if (!existingByIssue[issue.number]) {
+                // Determine priority from labels
+                let priority = 'medium';
+                if (issue.labels.includes('priority:critical')) priority = 'critical';
+                else if (issue.labels.includes('priority:high')) priority = 'high';
+                else if (issue.labels.includes('priority:low')) priority = 'low';
+
+                // Determine type
+                let type = 'task';
+                if (issue.labels.includes('type:feature')) type = 'feature';
+                else if (issue.labels.includes('type:bug')) type = 'bug';
+
+                const newItem = {
+                  id: `MONO-${String(backlog.backlog.length + 1).padStart(3, '0')}`,
+                  title: issue.title,
+                  description: issue.body?.substring(0, 500) || '',
+                  priority: priority,
+                  story_points: 3,  // Default estimate
+                  status: 'backlog',
+                  labels: [type],
+                  github_issue: issue.number
+                };
+
+                if (!dryRun) {
+                  backlog.backlog.push(newItem);
+                }
+                newItems++;
+              }
+            }
+
+            // Update metadata
+            backlog.metadata = {
+              total_items: backlog.backlog.length,
+              total_points: backlog.backlog.reduce((sum, i) => sum + (i.story_points || 0), 0),
+              last_updated: new Date().toISOString().split('T')[0],
+              last_sync: new Date().toISOString()
+            };
+
+            if (!dryRun) {
+              fs.writeFileSync(backlogPath, JSON.stringify(backlog, null, 2) + '\n');
+            }
+
+            console.log(`New items from issues: ${newItems}`);
+            return { newItems, dryRun };
+
+      - name: Commit changes
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .scrum/backlog.json
+          git diff --staged --quiet || git commit -m "chore(scrum): sync backlog from GitHub issues"
+          git push
+
+  generate-report:
+    name: Generate Sprint Report
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'generate-report' || github.event.inputs.action == 'sync-all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get project metrics
+        id: metrics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get issue stats
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const { data: closedIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              since: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+              per_page: 100
+            });
+
+            // Get PR stats
+            const { data: openPRs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+
+            const { data: mergedPRs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              per_page: 20
+            });
+
+            const recentlyMerged = mergedPRs.filter(pr =>
+              pr.merged_at &&
+              new Date(pr.merged_at) > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+            );
+
+            return {
+              openIssues: openIssues.length,
+              closedRecently: closedIssues.filter(i => !i.pull_request).length,
+              openPRs: openPRs.length,
+              mergedPRs: recentlyMerged.length,
+              byPriority: {
+                critical: openIssues.filter(i => i.labels.some(l => l.name === 'priority:critical')).length,
+                high: openIssues.filter(i => i.labels.some(l => l.name === 'priority:high')).length,
+                medium: openIssues.filter(i => i.labels.some(l => l.name === 'priority:medium')).length,
+                low: openIssues.filter(i => i.labels.some(l => l.name === 'priority:low')).length
+              }
+            };
+
+      - name: Create summary issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const metrics = ${{ steps.metrics.outputs.result }};
+            const today = new Date().toISOString().split('T')[0];
+
+            const body = `## Sprint Status Report - ${today}
+
+            ### Overview
+
+            | Metric | Count |
+            |--------|-------|
+            | Open Issues | ${metrics.openIssues} |
+            | Closed (last 14 days) | ${metrics.closedRecently} |
+            | Open PRs | ${metrics.openPRs} |
+            | Merged PRs (last 14 days) | ${metrics.mergedPRs} |
+
+            ### Issues by Priority
+
+            | Priority | Count | Bar |
+            |----------|-------|-----|
+            | Critical | ${metrics.byPriority.critical} | ${'🔴'.repeat(metrics.byPriority.critical)} |
+            | High | ${metrics.byPriority.high} | ${'🟠'.repeat(metrics.byPriority.high)} |
+            | Medium | ${metrics.byPriority.medium} | ${'🟡'.repeat(Math.min(metrics.byPriority.medium, 10))}${metrics.byPriority.medium > 10 ? '...' : ''} |
+            | Low | ${metrics.byPriority.low} | ${'🟢'.repeat(Math.min(metrics.byPriority.low, 10))}${metrics.byPriority.low > 10 ? '...' : ''} |
+
+            ### Velocity
+
+            \`\`\`
+            Closed: ${'█'.repeat(Math.min(metrics.closedRecently, 20))} ${metrics.closedRecently}
+            Merged: ${'█'.repeat(Math.min(metrics.mergedPRs, 20))} ${metrics.mergedPRs}
+            \`\`\`
+
+            ---
+            *Auto-generated sprint report*
+            `;
+
+            // Find or create status issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'sprint-report',
+              state: 'open'
+            });
+
+            if (issues.length > 0) {
+              // Update existing
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: body
+              });
+              console.log(`Updated issue #${issues[0].number}`);
+            } else {
+              // Create new
+              const { data: newIssue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Sprint Status Report - ${today}`,
+                body: body,
+                labels: ['sprint-report', 'documentation']
+              });
+              console.log(`Created issue #${newIssue.number}`);
+            }

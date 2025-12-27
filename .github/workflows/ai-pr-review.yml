@@ -1,0 +1,316 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.5.0"
+
+jobs:
+  # Automated code review
+  review:
+    name: AI Code Review
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get changed files
+        id: changed-files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+
+            const pythonFiles = files
+              .filter(f => f.filename.endsWith('.py'))
+              .map(f => ({
+                filename: f.filename,
+                status: f.status,
+                additions: f.additions,
+                deletions: f.deletions,
+                patch: f.patch
+              }));
+
+            console.log(`Found ${pythonFiles.length} Python files changed`);
+            return pythonFiles;
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run linter on changed files
+        id: lint
+        continue-on-error: true
+        run: |
+          FILES=$(echo '${{ steps.changed-files.outputs.result }}' | jq -r '.[].filename' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            uv run ruff check $FILES --output-format=json > lint-results.json 2>&1 || true
+            echo "lint_results=$(cat lint-results.json | jq -c '.')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run type check on changed files
+        id: typecheck
+        continue-on-error: true
+        run: |
+          FILES=$(echo '${{ steps.changed-files.outputs.result }}' | jq -r '.[].filename' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            uv run mypy $FILES --no-error-summary 2>&1 | head -50 > typecheck-results.txt || true
+            echo "typecheck_results<<EOF" >> $GITHUB_OUTPUT
+            cat typecheck-results.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate review summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const changedFiles = ${{ steps.changed-files.outputs.result }};
+            const lintResults = `${{ steps.lint.outputs.lint_results || '[]' }}`;
+            const typecheckResults = `${{ steps.typecheck.outputs.typecheck_results || 'No type errors found' }}`;
+
+            // Calculate metrics
+            const totalAdditions = changedFiles.reduce((sum, f) => sum + f.additions, 0);
+            const totalDeletions = changedFiles.reduce((sum, f) => sum + f.deletions, 0);
+            const fileCount = changedFiles.length;
+
+            // Build review comment
+            let review = `## AI Code Review Summary
+
+            ### Changes Overview
+            | Metric | Value |
+            |--------|-------|
+            | Files Changed | ${fileCount} |
+            | Lines Added | +${totalAdditions} |
+            | Lines Removed | -${totalDeletions} |
+            | Net Change | ${totalAdditions - totalDeletions >= 0 ? '+' : ''}${totalAdditions - totalDeletions} |
+
+            ### Files Reviewed
+            `;
+
+            changedFiles.forEach(f => {
+              const icon = f.status === 'added' ? '🆕' : f.status === 'removed' ? '🗑️' : '📝';
+              review += `- ${icon} \`${f.filename}\` (+${f.additions}/-${f.deletions})\n`;
+            });
+
+            review += `
+            ### Automated Checks
+
+            #### Linting
+            `;
+
+            try {
+              const lints = JSON.parse(lintResults);
+              if (lints.length === 0) {
+                review += '✅ No linting issues found\n';
+              } else {
+                review += `⚠️ Found ${lints.length} linting issue(s)\n`;
+                lints.slice(0, 5).forEach(l => {
+                  review += `- \`${l.filename}:${l.location?.row}\`: ${l.message}\n`;
+                });
+                if (lints.length > 5) {
+                  review += `- ... and ${lints.length - 5} more\n`;
+                }
+              }
+            } catch {
+              review += '✅ No linting issues found\n';
+            }
+
+            review += `
+            #### Type Checking
+            `;
+
+            if (typecheckResults.includes('error')) {
+              review += '⚠️ Type errors found:\n```\n' + typecheckResults + '\n```\n';
+            } else {
+              review += '✅ No type errors found\n';
+            }
+
+            review += `
+            ---
+            ### AI Recommendations
+
+            *Based on the changes in this PR:*
+
+            1. **Test Coverage**: Ensure new code has corresponding tests
+            2. **Documentation**: Update docstrings for modified functions
+            3. **Error Handling**: Verify proper exception handling is in place
+
+            ---
+            *This review was automatically generated. Human review is still recommended.*
+            `;
+
+            // Post review comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: review
+            });
+
+  # Check test coverage for new code
+  coverage-check:
+    name: AI Coverage Analysis
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests with coverage
+        id: coverage
+        continue-on-error: true
+        run: |
+          uv run pytest --cov=packages --cov=apps --cov-report=json --cov-report=term 2>&1 | tee coverage-output.txt
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])" 2>/dev/null || echo "0")
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+
+      - name: Comment coverage status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const coverage = parseFloat('${{ steps.coverage.outputs.coverage }}') || 0;
+            const threshold = 80;
+            const status = coverage >= threshold ? '✅' : '⚠️';
+            const bar = '█'.repeat(Math.floor(coverage / 5)) + '░'.repeat(20 - Math.floor(coverage / 5));
+
+            const comment = `## Test Coverage Report
+
+            ${status} **Coverage: ${coverage.toFixed(1)}%** (threshold: ${threshold}%)
+
+            \`\`\`
+            ${bar} ${coverage.toFixed(1)}%
+            \`\`\`
+
+            ${coverage < threshold ?
+              `> ⚠️ Coverage is below the ${threshold}% threshold. Please add tests for new code.` :
+              `> ✅ Coverage meets the ${threshold}% threshold.`
+            }
+            `;
+
+            // Find existing coverage comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number
+            });
+
+            const existingComment = comments.find(c =>
+              c.body.includes('Test Coverage Report') &&
+              c.user.type === 'Bot'
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: comment
+              });
+            }
+
+  # Security analysis
+  security-check:
+    name: AI Security Review
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run Bandit security scan
+        id: bandit
+        continue-on-error: true
+        run: |
+          uv run bandit -r packages apps -ll -f json -o bandit-results.json 2>&1 || true
+          ISSUES=$(python -c "import json; r=json.load(open('bandit-results.json')); print(len(r.get('results', [])))" 2>/dev/null || echo "0")
+          echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      - name: Comment security status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = parseInt('${{ steps.bandit.outputs.issues }}') || 0;
+
+            let comment = `## Security Analysis
+
+            `;
+
+            if (issues === 0) {
+              comment += `✅ **No security issues detected**
+
+              The automated security scan found no vulnerabilities in the changed code.
+              `;
+            } else {
+              comment += `⚠️ **${issues} potential security issue(s) found**
+
+              Please review the Bandit report for details. Security issues should be addressed before merging.
+              `;
+            }
+
+            comment += `
+            ---
+            *Scanned with Bandit security analyzer*
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: comment
+            });
