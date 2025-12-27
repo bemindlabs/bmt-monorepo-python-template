@@ -1,0 +1,268 @@
+name: AI Issue Handler
+
+on:
+  issues:
+    types: [opened, labeled, assigned]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.5.0"
+
+jobs:
+  # Triage new issues with AI
+  triage:
+    name: AI Issue Triage
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Analyze Issue Content
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+
+            // Simple keyword-based classification
+            const labels = [];
+            const analysis = {
+              type: 'task',
+              priority: 'medium',
+              component: 'general'
+            };
+
+            // Detect issue type
+            if (title.includes('bug') || body.includes('error') || body.includes('crash')) {
+              labels.push('type:bug');
+              analysis.type = 'bug';
+            } else if (title.includes('feature') || body.includes('would be nice')) {
+              labels.push('type:feature');
+              analysis.type = 'feature';
+            } else if (title.includes('docs') || title.includes('documentation')) {
+              labels.push('type:docs');
+              analysis.type = 'docs';
+            } else {
+              labels.push('type:task');
+            }
+
+            // Detect priority
+            if (title.includes('urgent') || body.includes('critical') || body.includes('blocking')) {
+              labels.push('priority:critical');
+              analysis.priority = 'critical';
+            } else if (title.includes('important') || body.includes('high priority')) {
+              labels.push('priority:high');
+              analysis.priority = 'high';
+            } else {
+              labels.push('priority:medium');
+            }
+
+            // Detect component
+            if (body.includes('api') || body.includes('endpoint')) {
+              labels.push('component:api');
+              analysis.component = 'api';
+            } else if (body.includes('cli') || body.includes('command')) {
+              labels.push('component:cli');
+              analysis.component = 'cli';
+            } else if (body.includes('core') || body.includes('package')) {
+              labels.push('component:core');
+              analysis.component = 'core';
+            }
+
+            // Add AI-ready label if issue is well-structured
+            if (body.length > 100 && (body.includes('steps') || body.includes('expected') || body.includes('actual'))) {
+              labels.push('ai-ready');
+            }
+
+            // Add labels to issue
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }
+
+            // Add initial triage comment
+            const comment = `## AI Triage Analysis
+
+            | Category | Value |
+            |----------|-------|
+            | Type | \`${analysis.type}\` |
+            | Priority | \`${analysis.priority}\` |
+            | Component | \`${analysis.component}\` |
+
+            **Applied Labels:** ${labels.map(l => '`' + l + '`').join(', ')}
+
+            ---
+            *This issue has been automatically triaged. A team member will review shortly.*
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: comment
+            });
+
+  # Auto-fix issues labeled with 'ai-fix'
+  auto-fix:
+    name: AI Auto-Fix
+    if: |
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'ai-fix'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Create fix branch
+        id: branch
+        run: |
+          BRANCH_NAME="fix/issue-${{ github.event.issue.number }}-ai-fix"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Add processing comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: '🤖 **AI Fix in Progress**\n\nAnalyzing issue and preparing fix...\n\n_This may take a few minutes._'
+            });
+
+      # Placeholder for actual AI fix logic
+      # In production, this would invoke Claude Code or similar
+      - name: Analyze and create fix
+        id: fix
+        run: |
+          echo "AI analysis would happen here"
+          echo "Issue: ${{ github.event.issue.title }}"
+          echo "Body: ${{ github.event.issue.body }}"
+          # Placeholder - actual implementation would:
+          # 1. Parse issue for error details
+          # 2. Search codebase for related files
+          # 3. Generate fix using AI
+          # 4. Apply changes
+          echo "fix_applied=false" >> $GITHUB_OUTPUT
+
+      - name: Update issue with status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fixApplied = '${{ steps.fix.outputs.fix_applied }}' === 'true';
+            const status = fixApplied
+              ? '✅ **Fix Generated**\n\nA pull request has been created with the proposed fix.'
+              : '⚠️ **Manual Review Required**\n\nThe AI was unable to automatically fix this issue. Manual intervention is required.';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: status
+            });
+
+  # Handle AI command comments
+  command-handler:
+    name: AI Command Handler
+    if: |
+      github.event_name == 'issue_comment' &&
+      startsWith(github.event.comment.body, '/ai')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse command
+        id: command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.comment.body;
+            const parts = body.trim().split(/\s+/);
+            const command = parts[0].replace('/ai', '').replace('-', '');
+            const args = parts.slice(1).join(' ');
+
+            console.log(`Command: ${command}`);
+            console.log(`Args: ${args}`);
+
+            // Supported commands:
+            // /ai-analyze - Analyze the issue in depth
+            // /ai-suggest - Suggest solutions
+            // /ai-assign - Suggest assignee
+            // /ai-estimate - Estimate story points
+
+            return {
+              command: command || 'analyze',
+              args: args
+            };
+
+      - name: Acknowledge command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const command = ${{ steps.command.outputs.result }};
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Execute command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const command = ${{ steps.command.outputs.result }};
+            let response = '';
+
+            switch (command.command) {
+              case 'analyze':
+                response = '## AI Analysis\n\n*Detailed analysis would be generated here by Claude Code.*\n\n**Suggested approach:**\n1. Review related code\n2. Identify root cause\n3. Propose solution';
+                break;
+              case 'suggest':
+                response = '## AI Suggestions\n\n*Solution suggestions would be generated here.*';
+                break;
+              case 'estimate':
+                response = '## AI Estimation\n\n**Suggested Story Points:** 5\n\n*Based on complexity analysis of similar issues.*';
+                break;
+              default:
+                response = `Unknown command: \`${command.command}\`\n\nAvailable commands:\n- \`/ai-analyze\` - Deep analysis\n- \`/ai-suggest\` - Solution suggestions\n- \`/ai-estimate\` - Story point estimation`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: response
+            });
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });

@@ -1,0 +1,436 @@
+name: AI Documentation Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**/*.py'
+      - 'apps/**/*.py'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Documentation target'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - wiki
+          - api-docs
+          - changelog
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.5.0"
+
+jobs:
+  generate-api-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'api-docs' || github.event.inputs.target == 'all' || github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Generate API docs with pdoc
+        run: |
+          mkdir -p docs/api
+          uv run python -c "
+          import subprocess
+          import os
+
+          packages = ['packages/core', 'packages/shared', 'packages/config']
+          for pkg in packages:
+              if os.path.exists(pkg):
+                  name = os.path.basename(pkg)
+                  subprocess.run([
+                      'uv', 'run', 'pdoc',
+                      '--html',
+                      '--output-dir', f'docs/api/{name}',
+                      pkg
+                  ], check=False)
+          "
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs
+          path: docs/api/
+
+  sync-wiki:
+    name: Sync Documentation to Wiki
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'wiki' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      - name: Checkout wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+        continue-on-error: true  # Wiki might not exist yet
+
+      - name: Initialize wiki if needed
+        run: |
+          if [ ! -d "wiki/.git" ]; then
+            mkdir -p wiki
+            cd wiki
+            git init
+            echo "# ${{ github.repository }} Wiki" > Home.md
+            echo "" >> Home.md
+            echo "Welcome to the project wiki." >> Home.md
+          fi
+
+      - name: Generate wiki pages
+        run: |
+          cd wiki
+
+          # Home page
+          cat > Home.md << 'EOF'
+          # BMT Python Monorepo Wiki
+
+          Welcome to the project documentation.
+
+          ## Quick Links
+
+          - [[Getting Started]]
+          - [[Architecture Overview]]
+          - [[API Documentation]]
+          - [[Development Guide]]
+          - [[AI Automation]]
+
+          ## Project Structure
+
+          ```
+          bmt-monorepo-python-template/
+          ├── apps/           # Applications
+          ├── packages/       # Shared packages
+          │   ├── core/       # Core utilities
+          │   ├── shared/     # Shared types
+          │   └── config/     # Configuration
+          ├── tools/          # CLI tools
+          ├── tests/          # Test suites
+          └── infra/          # Infrastructure
+          ```
+
+          ## Latest Updates
+
+          See [[Changelog]] for recent changes.
+
+          ---
+          *Auto-generated documentation*
+          EOF
+
+          # Getting Started
+          cat > Getting-Started.md << 'EOF'
+          # Getting Started
+
+          ## Prerequisites
+
+          - Python 3.12+
+          - UV package manager
+          - Docker (optional)
+
+          ## Installation
+
+          ```bash
+          # Clone the repository
+          git clone <repo-url>
+          cd bmt-monorepo-python-template
+
+          # Install dependencies
+          make install
+
+          # Run tests
+          make test
+
+          # Start development
+          make dev
+          ```
+
+          ## Quick Commands
+
+          | Command | Description |
+          |---------|-------------|
+          | `make install` | Install dependencies |
+          | `make dev` | Start development mode |
+          | `make test` | Run tests |
+          | `make lint` | Run linter |
+          | `make type-check` | Run type checker |
+          | `make zero-qa` | Full quality check |
+
+          ## Next Steps
+
+          - Review [[Architecture Overview]]
+          - Explore [[API Documentation]]
+          - Read [[Development Guide]]
+          EOF
+
+          # Architecture Overview
+          cat > Architecture-Overview.md << 'EOF'
+          # Architecture Overview
+
+          ## Monorepo Structure
+
+          This project uses a monorepo architecture with UV workspaces.
+
+          ### Packages
+
+          | Package | Purpose |
+          |---------|---------|
+          | `core` | Framework utilities, base classes |
+          | `shared` | Shared types, errors, constants |
+          | `config` | Environment and configuration management |
+
+          ### Applications
+
+          Applications in `apps/` consume packages and provide specific functionality.
+
+          ### Dependency Flow
+
+          ```
+          apps/
+            └── packages/core
+                └── packages/shared
+                └── packages/config
+          ```
+
+          ## Design Principles
+
+          1. **Type Safety**: Strict typing with MyPy
+          2. **Modularity**: Clear package boundaries
+          3. **Testability**: High test coverage requirements
+          4. **Automation**: AI-assisted development workflows
+          EOF
+
+          # AI Automation
+          cat > AI-Automation.md << 'EOF'
+          # AI Automation Workflow
+
+          This project uses AI-powered automation for development tasks.
+
+          ## Available AI Features
+
+          ### Issue Handling
+          - Automatic issue triage and labeling
+          - AI-powered bug analysis
+          - Solution suggestions
+
+          ### Code Review
+          - Automated PR reviews
+          - Security scanning
+          - Coverage analysis
+
+          ### Documentation
+          - Auto-generated API docs
+          - Wiki synchronization
+          - Changelog generation
+
+          ## AI Commands
+
+          Use these commands in issue comments:
+
+          | Command | Description |
+          |---------|-------------|
+          | `/ai-analyze` | Deep analysis of the issue |
+          | `/ai-suggest` | Get solution suggestions |
+          | `/ai-estimate` | Story point estimation |
+
+          ## Workflows
+
+          - `ai-issue-handler.yml` - Issue automation
+          - `ai-pr-review.yml` - PR review automation
+          - `ai-project-sync.yml` - Project board sync
+          - `ai-docs-sync.yml` - Documentation sync
+          EOF
+
+          # Development Guide
+          cat > Development-Guide.md << 'EOF'
+          # Development Guide
+
+          ## Code Style
+
+          - Use Ruff for linting and formatting
+          - Follow strict typing with MyPy
+          - Use Conventional Commits
+
+          ## Testing
+
+          ```bash
+          # Run all tests
+          make test
+
+          # Run with coverage
+          make test-coverage
+
+          # Run specific tests
+          uv run pytest tests/unit/core -v
+          ```
+
+          ## Quality Gates
+
+          Before committing:
+
+          1. `make lint` - Check code style
+          2. `make type-check` - Verify types
+          3. `make test` - Run tests
+
+          Or use `make zero-qa` for all checks.
+
+          ## Creating a New Package
+
+          ```bash
+          # Use the development command
+          /dev-new-package
+
+          # Or manually:
+          mkdir packages/mypackage
+          # Add pyproject.toml
+          # Update root workspace
+          ```
+          EOF
+
+      - name: Commit wiki changes
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "docs: sync wiki from main repository"
+          git push origin HEAD:master || git push origin HEAD:main || echo "Wiki push skipped"
+        continue-on-error: true
+
+  generate-changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    if: github.event.inputs.target == 'changelog' || github.event.inputs.target == 'all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Get commits since last tag
+            let commits;
+            try {
+              const lastTag = execSync('git describe --tags --abbrev=0 2>/dev/null || echo ""', { encoding: 'utf8' }).trim();
+              const range = lastTag ? `${lastTag}..HEAD` : 'HEAD~50..HEAD';
+              commits = execSync(`git log ${range} --pretty=format:"%H|%s|%an|%ad" --date=short`, { encoding: 'utf8' })
+                .split('\n')
+                .filter(Boolean)
+                .map(line => {
+                  const [hash, subject, author, date] = line.split('|');
+                  return { hash: hash.slice(0, 7), subject, author, date };
+                });
+            } catch (e) {
+              commits = [];
+            }
+
+            // Categorize commits
+            const categories = {
+              feat: { title: 'Features', items: [] },
+              fix: { title: 'Bug Fixes', items: [] },
+              docs: { title: 'Documentation', items: [] },
+              refactor: { title: 'Refactoring', items: [] },
+              test: { title: 'Tests', items: [] },
+              chore: { title: 'Chores', items: [] },
+              other: { title: 'Other', items: [] }
+            };
+
+            commits.forEach(commit => {
+              const match = commit.subject.match(/^(\w+)(?:\([^)]+\))?:\s*(.+)/);
+              if (match) {
+                const [, type, message] = match;
+                const category = categories[type] || categories.other;
+                category.items.push({ ...commit, message });
+              } else {
+                categories.other.items.push({ ...commit, message: commit.subject });
+              }
+            });
+
+            // Generate markdown
+            let changelog = `# Changelog\n\n`;
+            changelog += `_Generated on ${new Date().toISOString().split('T')[0]}_\n\n`;
+
+            for (const [key, category] of Object.entries(categories)) {
+              if (category.items.length > 0) {
+                changelog += `## ${category.title}\n\n`;
+                category.items.forEach(item => {
+                  changelog += `- ${item.message} (${item.hash}) - ${item.date}\n`;
+                });
+                changelog += '\n';
+              }
+            }
+
+            const fs = require('fs');
+            fs.writeFileSync('CHANGELOG.md', changelog);
+            console.log(`Generated changelog with ${commits.length} commits`);
+
+            return { commitCount: commits.length };
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "docs: update changelog"
+          git push
+        continue-on-error: true
+
+  notify-completion:
+    name: Notify Completion
+    runs-on: ubuntu-latest
+    needs: [generate-api-docs, sync-wiki, generate-changelog]
+    if: always()
+    steps:
+      - name: Create summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = {
+              'API Docs': '${{ needs.generate-api-docs.result }}',
+              'Wiki Sync': '${{ needs.sync-wiki.result }}',
+              'Changelog': '${{ needs.generate-changelog.result }}'
+            };
+
+            let summary = '## Documentation Sync Complete\n\n';
+            summary += '| Task | Status |\n';
+            summary += '|------|--------|\n';
+
+            for (const [name, status] of Object.entries(jobs)) {
+              const icon = status === 'success' ? '✅' :
+                          status === 'skipped' ? '⏭️' :
+                          status === 'failure' ? '❌' : '⚠️';
+              summary += `| ${name} | ${icon} ${status} |\n`;
+            }
+
+            console.log(summary);
+            core.summary.addRaw(summary).write();

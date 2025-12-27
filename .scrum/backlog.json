@@ -44,11 +44,143 @@
       "story_points": 3,
       "status": "backlog",
       "labels": ["feature", "observability"]
+    },
+    {
+      "id": "AI-001",
+      "title": "Create AI-triggered workflow dispatch",
+      "description": "GitHub Action that triggers Claude Code on issue/PR events. Foundation for all AI automation.",
+      "priority": "high",
+      "story_points": 5,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "github-actions"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-002",
+      "title": "Implement auto-fix workflow",
+      "description": "Workflow that auto-fixes issues labeled 'ai-fix' using AI analysis and code generation.",
+      "priority": "high",
+      "story_points": 8,
+      "status": "backlog",
+      "labels": ["feature", "ai-automation", "github-actions"],
+      "epic": "ai-automation",
+      "depends_on": ["AI-001"]
+    },
+    {
+      "id": "AI-003",
+      "title": "Add code review automation",
+      "description": "AI-powered PR review with inline suggestions, linting results, and coverage analysis.",
+      "priority": "high",
+      "story_points": 5,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "github-actions"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-004",
+      "title": "Create test generation workflow",
+      "description": "Auto-generate tests for new code via AI analysis of code changes.",
+      "priority": "medium",
+      "story_points": 5,
+      "status": "backlog",
+      "labels": ["feature", "ai-automation", "testing"],
+      "epic": "ai-automation",
+      "depends_on": ["AI-001"]
+    },
+    {
+      "id": "AI-005",
+      "title": "Implement documentation generator",
+      "description": "Auto-update documentation when code changes, including API docs and wiki.",
+      "priority": "medium",
+      "story_points": 3,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "docs"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-006",
+      "title": "Issue triage automation",
+      "description": "Automatically label and categorize new issues based on content analysis.",
+      "priority": "high",
+      "story_points": 5,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "github-issues"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-007",
+      "title": "Issue-to-task conversion",
+      "description": "Convert GitHub issues to actionable development tasks in local backlog.",
+      "priority": "high",
+      "story_points": 3,
+      "status": "backlog",
+      "labels": ["feature", "ai-automation", "github-issues"],
+      "epic": "ai-automation",
+      "depends_on": ["AI-006"]
+    },
+    {
+      "id": "AI-008",
+      "title": "AI issue response bot",
+      "description": "Auto-respond to issues with AI analysis, suggestions, and next steps.",
+      "priority": "medium",
+      "story_points": 5,
+      "status": "backlog",
+      "labels": ["feature", "ai-automation", "github-issues"],
+      "epic": "ai-automation",
+      "depends_on": ["AI-006"]
+    },
+    {
+      "id": "AI-010",
+      "title": "Auto project board updates",
+      "description": "Sync local backlog with GitHub Project board automatically.",
+      "priority": "high",
+      "story_points": 5,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "github-projects"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-011",
+      "title": "Sprint automation",
+      "description": "Auto-create sprints as GitHub milestones/iterations with calculated capacity.",
+      "priority": "medium",
+      "story_points": 3,
+      "status": "backlog",
+      "labels": ["feature", "ai-automation", "github-projects"],
+      "epic": "ai-automation",
+      "depends_on": ["AI-010"]
+    },
+    {
+      "id": "AI-014",
+      "title": "Wiki auto-generation",
+      "description": "Generate and sync wiki pages from code documentation and README files.",
+      "priority": "high",
+      "story_points": 5,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "github-wiki"],
+      "epic": "ai-automation"
+    },
+    {
+      "id": "AI-017",
+      "title": "Changelog automation",
+      "description": "Auto-update changelog from conventional commits and release notes.",
+      "priority": "low",
+      "story_points": 2,
+      "status": "ready",
+      "labels": ["feature", "ai-automation", "docs"],
+      "epic": "ai-automation"
     }
   ],
   "metadata": {
-    "total_items": 5,
-    "total_points": 27,
-    "last_updated": "2024-12-25"
+    "total_items": 17,
+    "total_points": 73,
+    "last_updated": "2025-12-27",
+    "epics": {
+      "ai-automation": {
+        "name": "AI Coding Automation",
+        "description": "GitHub Actions, Issues, Projects, and Wiki integration for AI-powered development",
+        "total_points": 46
+      }
+    }
   }
 }
